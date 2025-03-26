@@ -55,10 +55,18 @@ def check_lynis():
 
 def run_lynis_and_save_output():
     lynis_executable = "./lynis" if os.path.isfile("./lynis") else "lynis"
-    output_file = os.path.join(os.getcwd(), "lynis_report.txt")
+    
+    # Force output path to ~/lynis/lynis_report.txt
+    home_dir = os.path.expanduser("~")
+    report_dir = os.path.join(home_dir, "lynis")
+    output_file = os.path.join(report_dir, "lynis_report.txt")
+
+    # Create the directory if it's missing
+    os.makedirs(report_dir, exist_ok=True)
 
     print("\n⚠️  This system audit may take a minute or two to complete. Please be patient...\n")
     print(f"🚀 Running Lynis using: {lynis_executable}")
+    print(f"📄 Saving output to: {output_file}")
 
     try:
         with open(output_file, "w") as f:
