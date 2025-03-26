@@ -54,17 +54,25 @@ def check_lynis():
         sys.exit(1)
 
 def run_lynis_and_save_output():
-    output_file = "lynis_report.txt"
     lynis_executable = "./lynis" if os.path.isfile("./lynis") else "lynis"
+    output_file = os.path.join(os.getcwd(), "lynis_report.txt")
 
+    print("\n⚠️  This system audit may take a minute or two to complete. Please be patient...\n")
     print(f"🚀 Running Lynis using: {lynis_executable}")
+
     try:
         with open(output_file, "w") as f:
-            subprocess.run([lynis_executable, "audit", "system", "--quiet"], stdout=f, stderr=subprocess.STDOUT, check=True)
-        print(f"✅ Lynis audit complete. Output saved to {output_file}")
+            subprocess.run(
+                [lynis_executable, "audit", "system", "--no-colors", "--verbose"],
+                stdout=f,
+                stderr=subprocess.STDOUT,
+                check=True
+            )
+        print(f"\n✅ Lynis audit complete. Output saved to: {output_file}")
     except subprocess.CalledProcessError as e:
         print("❌ Lynis failed to run.")
         print(f"Error: {e}")
+
 
 # ===== Main Flow =====
 check_admin()
