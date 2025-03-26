@@ -98,7 +98,6 @@ def print_hardening_score(report_path):
 
 def parse_sysctl_differences(report_path):
     diffs = {}
-    # Accept optional leading dash, handle extra space, skip multi-values
     pattern = re.compile(r'^\-?\s*([\w\.\-]+)\s+\(exp:\s*([^\)]+)\)\s+\[\s*DIFFERENT\s*\]', re.IGNORECASE)
 
     with open(report_path, 'r') as file:
@@ -108,13 +107,13 @@ def parse_sysctl_differences(report_path):
                 key, expected_value = match.groups()
                 expected_value = expected_value.strip()
 
-                # Skip if multiple expected values (comma, space, or 'or')
-                if ',' in expected_value or ' ' in expected_value or 'or' in expected_value:
-                    log_action(f"Skipping ambiguous expected value for {key}: '{expected_value}'")
-                    continue
-
-                diffs[key] = expected_value
+                # Only allow single numeric values
+                if re.fullmatch(r"\d+", expected_value):
+                    diffs[key] = expected_value
+                else:
+                    log_action(f"Skipping {key}: invalid expected value '{expected_value}'")
     return diffs
+
 
 def apply_sysctl_fixes(settings, conf_path="/etc/sysctl.d/99-lynis-hardening.conf"):
     log_action("Applying sysctl hardening values from Lynis scan.")
