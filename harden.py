@@ -122,4 +122,33 @@ def run_lynis_and_save_output():
     # ===== END TEMPORARY BLOCK =====
 
     print("\n⚠️  This system audit may take a minute or two to complete. Please be patient...\n")
-    print(f"🚀 Running Lynis
+    print(f"🚀 Running Lynis using: {lynis_executable}")
+
+    try:
+        result = subprocess.run(
+            [lynis_executable, "audit", "system", "--no-colors", "--verbose"],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            check=True
+        )
+
+        clean_output = remove_ansi_sequences(result.stdout)
+
+        with open(output_file, "w") as f:
+            f.write(clean_output)
+
+        print(f"\n✅ Lynis audit complete.")
+        print(f"📄 Output saved to: {output_file}")
+        print_hardening_score(output_file)
+        log_action(f"Lynis audit complete. Report saved to: {output_file}")
+
+    except subprocess.CalledProcessError as e:
+        print("❌ Lynis failed to run.")
+        print(f"Error: {e}")
+        log_action(f"Lynis failed to run: {e}")
+
+# ===== Main Flow =====
+check_admin()
+check_lynis()
+run_lynis_and_save_output()
