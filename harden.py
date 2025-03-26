@@ -150,6 +150,13 @@ def run_lynis_and_save_output():
         if resp != 'y':
             print("✅ Skipping Lynis scan.")
             log_action("Skipped Lynis scan due to existing report.")
+            
+            sysctl_diffs = parse_sysctl_differences(output_file)
+            if sysctl_diffs:
+                apply_sysctl_fixes(sysctl_diffs)
+            else:
+                print("✅ No sysctl differences found to fix.")
+                log_action("No sysctl differences found in existing report.")
             return
     # ===== END TEMPORARY BLOCK =====
 
