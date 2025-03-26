@@ -98,6 +98,9 @@ def print_hardening_score(report_path):
 
 def parse_sysctl_differences(report_path):
     diffs = {}
+
+    # Matches lines like:
+    # - net.ipv4.conf.all.accept_redirects (exp: 0) [ DIFFERENT ]
     pattern = re.compile(r'^\-?\s*([\w\.\-]+)\s+\(exp:\s*([^\)]+)\)\s+\[\s*DIFFERENT\s*\]', re.IGNORECASE)
 
     with open(report_path, 'r') as file:
@@ -107,12 +110,15 @@ def parse_sysctl_differences(report_path):
                 key, expected_value = match.groups()
                 expected_value = expected_value.strip()
 
-                # Only allow single numeric values
+                # ✅ Only apply if it's a single plain integer (e.g., "0", "4096")
                 if re.fullmatch(r"\d+", expected_value):
                     diffs[key] = expected_value
                 else:
-                    log_action(f"Skipping {key}: invalid expected value '{expected_value}'")
+                    # ❌ Skip non-numeric or complex values like fq_codel, 4 4 1 7, etc.
+                    log_action(f"Skipped sysctl {key}: expected value '{expected_value}' is not a plain number")
+
     return diffs
+
 
 
 def apply_sysctl_fixes(settings, conf_path="/etc/sysctl.d/99-lynis-hardening.conf"):
