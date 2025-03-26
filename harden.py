@@ -140,7 +140,35 @@ def apply_sysctl_fixes(settings, conf_path="/etc/sysctl.d/99-lynis-hardening.con
             current = result.stdout.strip()
 
             if current != desired:
-                if key in existing
+                if key in existing_keys:
+                    log_action(f"Skipping {key}: already exists in config file with potentially different value")
+                else:
+                    to_write[key] = desired
+                    log_action(f"Will apply {key} = {desired} (was {current})")
+            else:
+                log_action(f"Skipping {key}: already correct ({current})")
+        except Exception as e:
+            log_action(f"Error checking current value of {key}: {e}")
+
+    if not to_write:
+        log_action("All sysctl values are already correct or handled. No changes needed.")
+        return
+
+    try:
+        with open(conf_path, "a") as f:
+            for key, value in to_write.items():
+                f.write(f"{key} = {value}\n")
+                log_action(f"Persisted sysctl: {key} = {value} in {conf_path}")
+    except Exception as e:
+        log_action(f"ERROR writing to {conf_path}: {e}")
+        return
+
+    try:
+        subprocess.run(["sysctl", "--system"], check=True)
+        log_action("Reloaded sysctl settings using sysctl --system.")
+    except subprocess.CalledProcessError as e:
+        log_action(f"ERROR reloading sysctl settings: {e}")
+
 
 
 def run_lynis_and_save_output():
