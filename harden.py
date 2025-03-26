@@ -122,7 +122,6 @@ def parse_sysctl_differences(report_path):
 def apply_sysctl_fixes(settings, conf_path="/etc/sysctl.d/99-lynis-hardening.conf"):
     log_action("Applying sysctl hardening values from Lynis scan.")
 
-    # Load current file if it exists
     existing_keys = set()
     if os.path.exists(conf_path):
         with open(conf_path, "r") as f:
@@ -135,7 +134,6 @@ def apply_sysctl_fixes(settings, conf_path="/etc/sysctl.d/99-lynis-hardening.con
 
     for key, desired in settings.items():
         try:
-            # Check current system value
             result = subprocess.run(["sysctl", "-n", key], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True)
             current = result.stdout.strip()
 
@@ -151,6 +149,7 @@ def apply_sysctl_fixes(settings, conf_path="/etc/sysctl.d/99-lynis-hardening.con
             log_action(f"Error checking current value of {key}: {e}")
 
     if not to_write:
+        print("\n✅ No sysctl differences found to fix.")
         log_action("All sysctl values are already correct or handled. No changes needed.")
         return
 
@@ -169,6 +168,10 @@ def apply_sysctl_fixes(settings, conf_path="/etc/sysctl.d/99-lynis-hardening.con
     except subprocess.CalledProcessError as e:
         log_action(f"ERROR reloading sysctl settings: {e}")
 
+    # ✅ Print changes
+    print(f"\n🔧 Applied {len(to_write)} sysctl changes:")
+    for key, value in to_write.items():
+        print(f" - {key} = {value}")
 
 
 def run_lynis_and_save_output():
