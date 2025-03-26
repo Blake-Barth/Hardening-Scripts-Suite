@@ -98,13 +98,21 @@ def print_hardening_score(report_path):
 
 def parse_sysctl_differences(report_path):
     diffs = {}
+    # Accept optional leading dash, handle extra space, skip multi-values
     pattern = re.compile(r'^\-?\s*([\w\.\-]+)\s+\(exp:\s*([^\)]+)\)\s+\[\s*DIFFERENT\s*\]', re.IGNORECASE)
 
     with open(report_path, 'r') as file:
         for line in file:
-            match = pattern.match(line.strip())
+            match = pattern.search(line.strip())
             if match:
                 key, expected_value = match.groups()
+                expected_value = expected_value.strip()
+
+                # Skip if multiple expected values (comma, space, or 'or')
+                if ',' in expected_value or ' ' in expected_value or 'or' in expected_value:
+                    log_action(f"Skipping ambiguous expected value for {key}: '{expected_value}'")
+                    continue
+
                 diffs[key] = expected_value
     return diffs
 
