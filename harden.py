@@ -2,6 +2,7 @@ import os
 import shutil
 import sys
 import subprocess
+import re
 
 def check_admin():
     if os.geteuid() != 0:
@@ -53,6 +54,10 @@ def check_lynis():
         print("❌ Lynis not installed. Exiting.")
         sys.exit(1)
 
+def remove_ansi_sequences(text):
+    ansi_escape = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
+    return ansi_escape.sub('', text)
+
 def run_lynis_and_save_output():
     lynis_executable = "./lynis" if os.path.isfile("./lynis") else "lynis"
     
@@ -67,15 +72,22 @@ def run_lynis_and_save_output():
     print(f"🚀 Running Lynis using: {lynis_executable}")
 
     try:
+        result = subprocess.run(
+            [lynis_executable, "audit", "system", "--no-colors", "--verbose"],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            check=True
+        )
+
+        clean_output = remove_ansi_sequences(result.stdout)
+
         with open(output_file, "w") as f:
-            subprocess.run(
-                [lynis_executable, "audit", "system", "--no-colors", "--verbose"],
-                stdout=f,
-                stderr=subprocess.STDOUT,
-                check=True
-            )
+            f.write(clean_output)
+
         print(f"\n✅ Lynis audit complete.")
         print(f"📄 Output saved to: {output_file}")
+
     except subprocess.CalledProcessError as e:
         print("❌ Lynis failed to run.")
         print(f"Error: {e}")
