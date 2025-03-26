@@ -99,8 +99,6 @@ def print_hardening_score(report_path):
 def parse_sysctl_differences(report_path):
     diffs = {}
 
-    # Matches lines like:
-    # - net.ipv4.conf.all.accept_redirects (exp: 0) [ DIFFERENT ]
     pattern = re.compile(r'^\-?\s*([\w\.\-]+)\s+\(exp:\s*([^\)]+)\)\s+\[\s*DIFFERENT\s*\]', re.IGNORECASE)
 
     with open(report_path, 'r') as file:
@@ -110,53 +108,40 @@ def parse_sysctl_differences(report_path):
                 key, expected_value = match.groups()
                 expected_value = expected_value.strip()
 
-                # ✅ Only apply if it's a single plain integer (e.g., "0", "4096")
+                # Must be a pure number: no letters, no spaces, no symbols
                 if re.fullmatch(r"\d+", expected_value):
                     diffs[key] = expected_value
                 else:
-                    # ❌ Skip non-numeric or complex values like fq_codel, 4 4 1 7, etc.
-                    log_action(f"Skipped sysctl {key}: expected value '{expected_value}' is not a plain number")
+                    log_action(f"Skipped sysctl {key}: non-numeric or multi value '{expected_value}'")
 
     return diffs
+
 
 
 
 def apply_sysctl_fixes(settings, conf_path="/etc/sysctl.d/99-lynis-hardening.conf"):
     log_action("Applying sysctl hardening values from Lynis scan.")
 
+    # Load current file if it exists
+    existing_keys = set()
+    if os.path.exists(conf_path):
+        with open(conf_path, "r") as f:
+            for line in f:
+                if "=" in line:
+                    existing_key = line.split("=")[0].strip()
+                    existing_keys.add(existing_key)
+
     to_write = {}
 
     for key, desired in settings.items():
         try:
+            # Check current system value
             result = subprocess.run(["sysctl", "-n", key], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True)
             current = result.stdout.strip()
 
             if current != desired:
-                to_write[key] = desired
-                log_action(f"Will change {key}: current={current}, expected={desired}")
-            else:
-                log_action(f"Skipping {key}: already set to {current}")
-        except Exception as e:
-            log_action(f"Failed to check {key}: {e}")
+                if key in existing
 
-    if not to_write:
-        log_action("All sysctl values already correct. No changes made.")
-        return
-
-    try:
-        with open(conf_path, "a") as f:
-            for key, value in to_write.items():
-                f.write(f"{key} = {value}\n")
-                log_action(f"Persisted sysctl: {key} = {value} in {conf_path}")
-    except Exception as e:
-        log_action(f"ERROR writing to {conf_path}: {e}")
-        return
-
-    try:
-        subprocess.run(["sysctl", "--system"], check=True)
-        log_action("Reloaded sysctl settings using sysctl --system.")
-    except subprocess.CalledProcessError as e:
-        log_action(f"ERROR reloading sysctl settings: {e}")
 
 def run_lynis_and_save_output():
     lynis_executable = "./lynis" if os.path.isfile("./lynis") else "lynis"
