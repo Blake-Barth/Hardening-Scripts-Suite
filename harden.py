@@ -7,7 +7,6 @@ import glob
 from datetime import datetime
 
 def log_action(message, log_file=None):
-    # Save logs in the same directory as this script
     script_dir = os.path.dirname(os.path.abspath(__file__))
     default_log = os.path.join(script_dir, "hardening_log.txt")
     log_path = log_file or default_log
@@ -57,7 +56,6 @@ def check_lynis():
         log_action(f"Using system-installed Lynis at {lynis_path}")
         return
 
-    # Check for local git install in ~/lynis
     home_dir = os.path.expanduser("~")
     local_lynis_path = os.path.join(home_dir, "lynis", "lynis")
 
@@ -68,7 +66,6 @@ def check_lynis():
         log_action(f"Using locally installed Lynis at {local_lynis_path}")
         return
 
-    # Not found — prompt to install
     print("⚠️  Lynis is not installed.")
     response = input("Would you like to clone Lynis from GitHub into your home directory? (y/n): ").strip().lower()
     if response == 'y':
@@ -98,6 +95,41 @@ def print_hardening_score(report_path):
     except Exception as e:
         print(f"\n❌ Failed to read report: {e}")
         log_action(f"Error reading report for hardening index: {e}")
+
+def parse_sysctl_differences(report_path):
+    diffs = {}
+    pattern = re.compile(r'^([\w\.]+)\s+\(exp:\s*(\d+)\)\s+\[\s*DIFFERENT\s*\]', re.IGNORECASE)
+
+    with open(report_path, 'r') as file:
+        for line in file:
+            match = pattern.match(line.strip())
+            if match:
+                key, expected_value = match.groups()
+                diffs[key] = expected_value
+    return diffs
+
+def apply_sysctl_fixes(settings, conf_path="/etc/sysctl.d/99-lynis-hardening.conf"):
+    print("\n🔧 Applying and saving sysctl fixes from Lynis report...")
+    log_action("Applying sysctl hardening values from Lynis scan.")
+
+    try:
+        with open(conf_path, "a") as f:
+            for key, value in settings.items():
+                f.write(f"{key} = {value}\n")
+                log_action(f"Set {key} = {value} in {conf_path}")
+                print(f"✅ {key} = {value}")
+    except Exception as e:
+        print(f"❌ Failed to write to {conf_path}: {e}")
+        log_action(f"ERROR writing to {conf_path}: {e}")
+        return
+
+    try:
+        subprocess.run(["sysctl", "--system"], check=True)
+        print("✅ sysctl settings reloaded.")
+        log_action("Reloaded sysctl settings using sysctl --system.")
+    except subprocess.CalledProcessError as e:
+        print("❌ Failed to reload sysctl settings.")
+        log_action(f"ERROR reloading sysctl settings: {e}")
 
 def run_lynis_and_save_output():
     lynis_executable = "./lynis" if os.path.isfile("./lynis") else "lynis"
@@ -140,8 +172,16 @@ def run_lynis_and_save_output():
 
         print(f"\n✅ Lynis audit complete.")
         print(f"📄 Output saved to: {output_file}")
-        print_hardening_score(output_file)
         log_action(f"Lynis audit complete. Report saved to: {output_file}")
+
+        print_hardening_score(output_file)
+
+        sysctl_diffs = parse_sysctl_differences(output_file)
+        if sysctl_diffs:
+            apply_sysctl_fixes(sysctl_diffs)
+        else:
+            print("✅ No sysctl differences found to fix.")
+            log_action("No sysctl differences found in scan.")
 
     except subprocess.CalledProcessError as e:
         print("❌ Lynis failed to run.")
