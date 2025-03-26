@@ -117,26 +117,40 @@ def parse_sysctl_differences(report_path):
     return diffs
 
 def apply_sysctl_fixes(settings, conf_path="/etc/sysctl.d/99-lynis-hardening.conf"):
-    print("\n🔧 Applying and saving sysctl fixes from Lynis report...")
     log_action("Applying sysctl hardening values from Lynis scan.")
+
+    to_write = {}
+
+    for key, desired in settings.items():
+        try:
+            result = subprocess.run(["sysctl", "-n", key], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True)
+            current = result.stdout.strip()
+
+            if current != desired:
+                to_write[key] = desired
+                log_action(f"Will change {key}: current={current}, expected={desired}")
+            else:
+                log_action(f"Skipping {key}: already set to {current}")
+        except Exception as e:
+            log_action(f"Failed to check {key}: {e}")
+
+    if not to_write:
+        log_action("All sysctl values already correct. No changes made.")
+        return
 
     try:
         with open(conf_path, "a") as f:
-            for key, value in settings.items():
+            for key, value in to_write.items():
                 f.write(f"{key} = {value}\n")
-                log_action(f"Set {key} = {value} in {conf_path}")
-                print(f"✅ {key} = {value}")
+                log_action(f"Persisted sysctl: {key} = {value} in {conf_path}")
     except Exception as e:
-        print(f"❌ Failed to write to {conf_path}: {e}")
         log_action(f"ERROR writing to {conf_path}: {e}")
         return
 
     try:
         subprocess.run(["sysctl", "--system"], check=True)
-        print("✅ sysctl settings reloaded.")
         log_action("Reloaded sysctl settings using sysctl --system.")
     except subprocess.CalledProcessError as e:
-        print("❌ Failed to reload sysctl settings.")
         log_action(f"ERROR reloading sysctl settings: {e}")
 
 def run_lynis_and_save_output():
