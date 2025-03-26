@@ -98,7 +98,6 @@ def print_hardening_score(report_path):
 
 def parse_sysctl_differences(report_path):
     diffs = {}
-
     pattern = re.compile(r'^\-?\s*([\w\.\-]+)\s+\(exp:\s*([^\)]+)\)\s+\[\s*DIFFERENT\s*\]', re.IGNORECASE)
 
     with open(report_path, 'r') as file:
@@ -108,16 +107,12 @@ def parse_sysctl_differences(report_path):
                 key, expected_value = match.groups()
                 expected_value = expected_value.strip()
 
-                # Must be a pure number: no letters, no spaces, no symbols
+                # ✅ Only allow numeric values
                 if re.fullmatch(r"\d+", expected_value):
                     diffs[key] = expected_value
                 else:
                     log_action(f"Skipped sysctl {key}: non-numeric or multi value '{expected_value}'")
-
     return diffs
-
-
-
 
 def apply_sysctl_fixes(settings, conf_path="/etc/sysctl.d/99-lynis-hardening.conf"):
     log_action("Applying sysctl hardening values from Lynis scan.")
@@ -168,11 +163,43 @@ def apply_sysctl_fixes(settings, conf_path="/etc/sysctl.d/99-lynis-hardening.con
     except subprocess.CalledProcessError as e:
         log_action(f"ERROR reloading sysctl settings: {e}")
 
-    # ✅ Print changes
     print(f"\n🔧 Applied {len(to_write)} sysctl changes:")
     for key, value in to_write.items():
         print(f" - {key} = {value}")
 
+def check_grub_password_recommendation(report_path):
+    with open(report_path, "r") as f:
+        for line in f:
+            if "Set a password on GRUB boot loader" in line:
+                return True
+    return False
+
+def set_grub_password():
+    print("\n🔐 Lynis recommends setting a GRUB password to prevent boot-time tampering.")
+    confirm = input("Would you like to set a GRUB password now? (y/n): ").strip().lower()
+    if confirm != "y":
+        print("❌ Skipping GRUB password setup.")
+        log_action("User declined to set GRUB password.")
+        return
+
+    print("\n🧪 You will now be prompted to enter a password for GRUB.")
+    try:
+        subprocess.run(["grub-mkpasswd-pbkdf2"])
+        hashed_pw = input("\nPaste the full hashed password line here (starts with 'grub.pbkdf2.sha512...'): ").strip()
+
+        grub_conf = "/etc/grub.d/40_custom"
+        with open(grub_conf, "a") as f:
+            f.write("\nset superusers=\"root\"\n")
+            f.write(f"password_pbkdf2 root {hashed_pw}\n")
+        log_action(f"Added GRUB password to {grub_conf}")
+
+        subprocess.run(["update-grub"], check=True)
+        log_action("Ran update-grub after adding GRUB password.")
+
+        print("✅ GRUB password configured successfully.")
+    except Exception as e:
+        print(f"❌ Failed to set GRUB password: {e}")
+        log_action(f"Failed to set GRUB password: {e}")
 
 def run_lynis_and_save_output():
     lynis_executable = "./lynis" if os.path.isfile("./lynis") else "lynis"
@@ -181,7 +208,6 @@ def run_lynis_and_save_output():
     output_file = os.path.join(script_dir, "lynis_report.txt")
 
     # ===== TEMPORARY BLOCK FOR PERSONAL DEV USE =====
-    # ⚠️ REMOVE THIS BLOCK LATER IF USED IN PROD
     existing_reports = glob.glob(os.path.join(script_dir, "report_*.txt")) + \
                        ([output_file] if os.path.exists(output_file) else [])
 
@@ -193,13 +219,13 @@ def run_lynis_and_save_output():
         if resp != 'y':
             print("✅ Skipping Lynis scan.")
             log_action("Skipped Lynis scan due to existing report.")
-            
             sysctl_diffs = parse_sysctl_differences(output_file)
             if sysctl_diffs:
                 apply_sysctl_fixes(sysctl_diffs)
             else:
-                print("✅ No sysctl differences found to fix.")
-                log_action("No sysctl differences found in existing report.")
+                print("\n✅ No sysctl differences found to fix.")
+            if check_grub_password_recommendation(output_file):
+                set_grub_password()
             return
     # ===== END TEMPORARY BLOCK =====
 
@@ -230,8 +256,10 @@ def run_lynis_and_save_output():
         if sysctl_diffs:
             apply_sysctl_fixes(sysctl_diffs)
         else:
-            print("✅ No sysctl differences found to fix.")
-            log_action("No sysctl differences found in scan.")
+            print("\n✅ No sysctl differences found to fix.")
+
+        if check_grub_password_recommendation(output_file):
+            set_grub_password()
 
     except subprocess.CalledProcessError as e:
         print("❌ Lynis failed to run.")
