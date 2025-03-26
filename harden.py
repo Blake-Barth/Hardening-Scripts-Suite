@@ -2,36 +2,27 @@ import os
 import shutil
 import sys
 import subprocess
-import urllib.request
-import tarfile
-
 
 def check_admin():
     if os.geteuid() != 0:
         print("You need to run this script as root (sudo).")
         sys.exit(1)
-def download_and_install_lynis(home_dir):
-    lynis_url = "https://downloads.cisofy.com/lynis/lynis-3.0.9.tar.gz"  # or latest version
-    download_path = os.path.join(home_dir, "lynis.tar.gz")
-    extract_path = os.path.join(home_dir, "lynis")
+    else:
+        print("You are running as root.")
 
-    print("Downloading Lynis...")
-    urllib.request.urlretrieve(lynis_url, download_path)
+def install_lynis_via_git(home_dir):
+    repo_url = "https://github.com/CISOfy/lynis.git"
+    install_path = os.path.join(home_dir, "lynis")
 
-    print("Extracting Lynis...")
-    with tarfile.open(download_path, "r:gz") as tar:
-        tar.extractall(path=home_dir)
+    if os.path.exists(install_path):
+        print(f"Directory {install_path} already exists. Skipping clone.")
+    else:
+        print(f"Cloning Lynis into {install_path}...")
+        subprocess.run(["git", "clone", repo_url, install_path], check=True)
 
-    # Rename extracted folder (e.g., lynis-3.0.9 → lynis)
-    for item in os.listdir(home_dir):
-        if item.startswith("lynis-") and os.path.isdir(os.path.join(home_dir, item)):
-            os.rename(os.path.join(home_dir, item), extract_path)
-            break
-
-    os.remove(download_path)
-    os.chdir(extract_path)
-    print(f"Lynis installed to: {extract_path}")
-    print(f"Changed working directory to: {extract_path}")
+    os.chdir(install_path)
+    print(f"Lynis installed to: {install_path}")
+    print(f"Changed working directory to: {install_path}")
 
 def check_lynis():
     lynis_path = shutil.which("lynis")
@@ -44,13 +35,13 @@ def check_lynis():
     else:
         home_dir = os.path.expanduser("~")
         print("Lynis is not installed.")
-        response = input("Would you like to install Lynis in your home directory? (y/n): ").strip().lower()
+        response = input("Would you like to clone Lynis from GitHub into your home directory? (y/n): ").strip().lower()
         if response == 'y':
-            download_and_install_lynis(home_dir)
+            install_lynis_via_git(home_dir)
         else:
             print("Lynis not installed. Exiting.")
             sys.exit(1)
 
-if __name__ == "main":
-  check_admin()
-  check_lynis()
+# Main execution
+check_admin()
+check_lynis()
