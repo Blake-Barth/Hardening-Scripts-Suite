@@ -98,7 +98,7 @@ def print_hardening_score(report_path):
 
 def parse_sysctl_differences(report_path):
     diffs = {}
-    pattern = re.compile(r'^([\w\.]+)\s+\(exp:\s*(\d+)\)\s+\[\s*DIFFERENT\s*\]', re.IGNORECASE)
+    pattern = re.compile(r'^\-?\s*([\w\.\-]+)\s+\(exp:\s*([^\)]+)\)\s+\[\s*DIFFERENT\s*\]', re.IGNORECASE)
 
     with open(report_path, 'r') as file:
         for line in file:
