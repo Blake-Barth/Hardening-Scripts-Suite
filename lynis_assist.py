@@ -114,14 +114,7 @@ def run_lynis_and_save_output():
         if resp != 'y':
             print("✅ Skipping Lynis scan.")
             log_action("Skipped Lynis scan due to existing report.")
-            sysctl_diffs = parse_sysctl_differences(output_file)
-            if sysctl_diffs:
-                apply_sysctl_fixes(sysctl_diffs)
-            else:
-                print("\n✅ No sysctl differences found to fix.")
-            if check_grub_password_recommendation(output_file):
-                set_grub_password()
-            return
+    return
 
     print("\n⚠️  This system audit may take a minute or two to complete. Please be patient...\n")
     print(f"🚀 Running Lynis using: {lynis_executable}")
