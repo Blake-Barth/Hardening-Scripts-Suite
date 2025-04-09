@@ -95,3 +95,63 @@ def print_hardening_score(report_path):
     except Exception as e:
         print(f"\n❌ Failed to read report: {e}")
         log_action(f"Error reading report for hardening index: {e}")
+
+def run_lynis_and_save_output():
+    lynis_executable = "./lynis" if os.path.isfile("./lynis") else "lynis"
+
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    output_file = os.path.join(script_dir, "lynis_report.txt")
+
+    # ===== TEMPORARY BLOCK FOR PERSONAL DEV USE =====
+    existing_reports = glob.glob(os.path.join(script_dir, "report_*.txt")) + \
+                       ([output_file] if os.path.exists(output_file) else [])
+
+    if existing_reports:
+        print("📝 Existing Lynis report(s) found:")
+        for path in existing_reports:
+            print(f" - {os.path.basename(path)}")
+        resp = input("Would you like to re-run Lynis anyway? (y/n): ").strip().lower()
+        if resp != 'y':
+            print("✅ Skipping Lynis scan.")
+            log_action("Skipped Lynis scan due to existing report.")
+            sysctl_diffs = parse_sysctl_differences(output_file)
+            if sysctl_diffs:
+                apply_sysctl_fixes(sysctl_diffs)
+            else:
+                print("\n✅ No sysctl differences found to fix.")
+            if check_grub_password_recommendation(output_file):
+                set_grub_password()
+            return
+
+    print("\n⚠️  This system audit may take a minute or two to complete. Please be patient...\n")
+    print(f"🚀 Running Lynis using: {lynis_executable}")
+
+    try:
+        result = subprocess.run(
+            [lynis_executable, "audit", "system", "--no-colors", "--verbose"],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            check=True
+        )
+
+        clean_output = remove_ansi_sequences(result.stdout)
+
+        with open(output_file, "w") as f:
+            f.write(clean_output)
+
+        print(f"\n✅ Lynis audit complete.")
+        print(f"📄 Output saved to: {output_file}")
+        log_action(f"Lynis audit complete. Report saved to: {output_file}")
+
+        print_hardening_score(output_file)
+
+    except subprocess.CalledProcessError as e:
+        print("❌ Lynis failed to run.")
+        print(f"Error: {e}")
+        log_action(f"Lynis failed to run: {e}")
+
+# ===== Main Flow =====
+check_admin()
+check_lynis()
+run_lynis_and_save_output()
