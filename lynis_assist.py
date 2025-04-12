@@ -107,14 +107,15 @@ def run_lynis_and_save_output():
                        ([output_file] if os.path.exists(output_file) else [])
 
     if existing_reports:
-        print("📝 Existing Lynis report(s) found:")
-        for path in existing_reports:
-            print(f" - {os.path.basename(path)}")
-        resp = input("Would you like to re-run Lynis anyway? (y/n): ").strip().lower()
-        if resp != 'y':
-            print("✅ Skipping Lynis scan.")
-            log_action("Skipped Lynis scan due to existing report.")
-            return
+    print("📝 Existing Lynis report(s) found:")
+    for path in existing_reports:
+        print(f" - {os.path.basename(path)}")
+    resp = input("Would you like to re-run Lynis anyway? (y/n): ").strip().lower()
+    if resp != 'y':
+        print("✅ Skipping Lynis scan.")
+        log_action("Skipped Lynis scan due to existing report.")
+        print_hardening_score(output_file)  # <- ADDED THIS LINE
+        return
 
     print("\n⚠️  This system audit may take a minute or two to complete. Please be patient...\n")
     print(f"🚀 Running Lynis using: {lynis_executable}")
