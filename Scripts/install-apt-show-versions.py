@@ -19,28 +19,18 @@ def install_apt_show_versions():
     run_command(["apt-get", "update"])
     run_command(["apt-get", "install", "-y", "apt-show-versions"])
 
-def show_upgradable():
-    print("📋 Packages that can be upgraded:")
-    try:
-        subprocess.run(["apt-show-versions", "-u"], check=True)
-    except subprocess.CalledProcessError:
-        print("⚠️  Could not list upgradable packages.")
-
 def main():
     if os.geteuid() != 0:
         print("❌ This script must be run as root (sudo).")
         sys.exit(1)
 
-    print("🔍 This script installs `apt-show-versions` to check package versions and upgrades.")
+    print("🔍 This script installs `apt-show-versions` to audit package versions.")
 
     if not confirm("Do you want to install apt-show-versions?"):
         print("❎ Aborted by user.")
         return
 
     install_apt_show_versions()
-
-    if confirm("Do you want to display upgradable packages now?"):
-        show_upgradable()
 
     print("🎉 Done.")
 
