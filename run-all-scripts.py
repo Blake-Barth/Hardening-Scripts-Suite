@@ -27,11 +27,13 @@ def main():
 
     for script in script_files:
         full_path = os.path.join(SCRIPTS_DIR, script)
-        print(f"\n🚀 Running: {script}")
+        print(f"\n🚀 Starting script: {script}...")
+
         try:
             subprocess.run(["python3", full_path], check=True)
+            print(f"✅ Script {script} finished successfully.\n")
         except subprocess.CalledProcessError:
-            print(f"❌ Error occurred while running {script}")
+            print(f"❌ Error occurred while running {script}\n")
 
     # Prompt to reboot
     if confirm("\n🔄 All scripts complete. Would you like to reboot now?"):
