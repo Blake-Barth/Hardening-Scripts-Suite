@@ -88,6 +88,18 @@ def main():
 
     if changes:
         update_sshd_config(changes)
+
+        if confirm("Would you like to restart sshd now to apply changes?"):
+            try:
+                subprocess.run(["systemctl", "restart", "sshd"], check=True)
+                print("🔁 sshd restarted successfully.")
+            except subprocess.CalledProcessError:
+                print("❌ Failed to restart sshd. Please restart it manually.")
+        else:
+            print("⚠️  Remember to restart sshd for changes to take effect.")
+    else:
+        print("❎ No changes selected. SSH config left untouched.")
+
     else:
         print("❎ No changes selected. SSH config left untouched.")
 
