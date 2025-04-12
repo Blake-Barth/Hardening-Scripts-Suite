@@ -10,7 +10,8 @@ DEFAULTS = {
     "PASS_MIN_DAYS": 1,
     "PASS_MAX_DAYS": 90,
     "SHA_CRYPT_MIN_ROUNDS": 5000,
-    "SHA_CRYPT_MAX_ROUNDS": 10000
+    "SHA_CRYPT_MAX_ROUNDS": 10000,
+    "UMASK": "027"  # Adding UMASK value
 }
 
 def confirm(prompt):
