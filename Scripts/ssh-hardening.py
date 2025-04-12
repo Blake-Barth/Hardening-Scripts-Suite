@@ -89,17 +89,28 @@ def main():
     if changes:
         update_sshd_config(changes)
 
-        if confirm("Would you like to restart sshd now to apply changes?"):
+        if confirm("Would you like to restart the SSH service now to apply changes?"):
+            print("🧪 Testing SSH configuration with `sshd -t`...")
             try:
-                subprocess.run(["systemctl", "restart", "sshd"], check=True)
-                print("🔁 sshd restarted successfully.")
-            except subprocess.CalledProcessError:
-                print("❌ Failed to restart sshd. Please restart it manually.")
-        else:
-            print("⚠️  Remember to restart sshd for changes to take effect.")
-    else:
-        print("❎ No changes selected. SSH config left untouched.")
+                subprocess.run(["sshd", "-t"], check=True)
+                print("✅ SSH configuration is valid.")
 
+                try:
+                    subprocess.run(["systemctl", "restart", "ssh"], check=True)
+                    print("🔁 SSH service restarted using 'ssh'.")
+                except subprocess.CalledProcessError:
+                    print("⚠️  Failed to restart using 'ssh'. Trying 'sshd'...")
+                    try:
+                        subprocess.run(["systemctl", "restart", "sshd"], check=True)
+                        print("🔁 SSH service restarted using 'sshd'.")
+                    except subprocess.CalledProcessError:
+                        print("❌ Failed to restart SSH with both 'ssh' and 'sshd'. Please restart manually.")
+
+            except subprocess.CalledProcessError:
+                print("❌ SSH configuration test failed! Not restarting service.")
+                print("⚠️  Please fix the configuration manually and test with `sshd -t`.")
+        else:
+            print("⚠️  Remember to restart SSH for changes to take effect.")
     else:
         print("❎ No changes selected. SSH config left untouched.")
 
