@@ -40,7 +40,7 @@ def main():
         sys.exit(1)
 
     print("🔐 This script will protect your GRUB bootloader with a password.")
-    print("This prevents unauthorized modification of boot options.")
+    print("This prevents unauthorized modification of boot entries.")
 
     if not confirm("Do you want to continue?"):
         print("❎ Aborted by user.")
@@ -69,12 +69,16 @@ def main():
             '\n# Set GRUB superuser and hashed password\n'
             'set superuser="admin"\n'
             f'password_pbkdf2 admin {grub_hash}\n'
+            '\n# Dummy protected menuentry to enforce password at boot\n'
+            'menuentry "Protected Boot Entry" --users admin {\n'
+            '    echo "This is a protected entry."\n'
+            '}\n'
         )
 
         with open(GRUB_CUSTOM, "a") as f:
             f.write(entry)
 
-        print(f"✅ GRUB password entry appended to {GRUB_CUSTOM}")
+        print(f"✅ GRUB password and protected entry appended to {GRUB_CUSTOM}")
 
         # Apply additional protections
         ensure_grub_default_setting("GRUB_DISABLE_RECOVERY", "true")
@@ -84,8 +88,9 @@ def main():
         subprocess.run(['update-grub'], check=True)
         print("✅ GRUB configuration updated successfully.")
 
-        print("\n📌 Reboot your system to test GRUB password protection.")
-        print("   Try pressing 'e' or entering recovery mode — it should now require authentication.")
+        print("\n📌 Reboot your system and test GRUB protection.")
+        print("   Try pressing 'e' to edit or enter the protected menu — it should now require a password.")
+        print("   Lynis should now detect boot loader password protection.")
 
     except subprocess.CalledProcessError as e:
         print(f"❌ Command failed: {e}")
