@@ -70,9 +70,13 @@ def main():
     if option in ["yes", "no", "prohibit-password", "without-password"]:
         changes["PermitRootLogin"] = option
 
-    # 5. Port
-    if confirm("Do you want to change the SSH port from 22 to 2048?"):
-        changes["Port"] = "2048"
+    # 5. Port (custom)
+    custom_port = input("Enter a custom SSH port (or press Enter to skip): ").strip()
+    if custom_port:
+        if custom_port.isdigit() and 1 <= int(custom_port) <= 65535:
+            changes["Port"] = custom_port
+        else:
+            print("⚠️ Invalid port. Must be a number between 1 and 65535. Skipping port change.")
 
     # 6. TCPKeepAlive
     if confirm("Disable TCPKeepAlive? (Set to 'no' to reduce exposure)"):
@@ -85,6 +89,14 @@ def main():
     # 8. AllowTcpForwarding
     if confirm("Disable AllowTcpForwarding? (prevents port forwarding abuse)"):
         changes["AllowTcpForwarding"] = "no"
+
+    # 9. ClientAliveCountMax
+    if confirm("Set ClientAliveCountMax to 2? (disconnects unresponsive SSH clients quickly)"):
+        changes["ClientAliveCountMax"] = "2"
+
+    # 10. AllowAgentForwarding
+    if confirm("Disable AllowAgentForwarding? (prevents forwarding your SSH credentials to remote hosts)"):
+        changes["AllowAgentForwarding"] = "no"
 
     if changes:
         update_sshd_config(changes)
