@@ -16,11 +16,8 @@ Included Hardening Tasks:
 2. Enforce secure SSH configuration (e.g., disable root login, change port)
 3. Disable non-native binary support (binfmt_misc)
 4. Harden sysctl settings for kernel/network security
-5. Remove or restrict compilers to prevent local exploit compilation
-6. Enable and configure AIDE (Advanced Intrusion Detection Environment)
-7. Install chkrootkit for rootkit detection
-8. Install and configure UFW firewall
-9. Install Chroot or other malware detection tools (optional)
+5. Install chkrootkit for rootkit detection
+6. Install and configure UFW firewall
 
 How to Use:
 -----------
