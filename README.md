@@ -12,12 +12,24 @@ Key Features:
 
 Included Hardening Tasks:
 -------------------------
-1. Configure and protect GRUB with a password
-2. Enforce secure SSH configuration (e.g., disable root login, change port)
-3. Disable non-native binary support (binfmt_misc)
-4. Harden sysctl settings for kernel/network security
-5. Install chkrootkit for rootkit detection
-6. Install and configure UFW firewall
+1. Password‑protect the GRUB bootloader
+2. Display a pre‑login legal/notice banner
+3. Harden SSH (disable root login, change port, enforce key‑based auth, etc.)
+4. Keep the system fully patched and enable unattended security updates
+5. Enforce strong password complexity and account‑lockout policies via PAM
+6. Tighten kernel and network parameters through sysct
+7. Disable non‑native binary support (binfmt_misc)
+8. Disable core‑dump creation
+9. Blacklist or remove unnecessary kernel modules/drivers (e.g., USB storage, FireWire, squashfs)
+10. Disable legacy or insecure network services/protocols (rsh, telnet, talk, tftp, etc.)
+11. Enable DNSSEC validation for secure name resolution
+12. Enable process accounting to record command histories
+13. Enable system activity logging with sysstat
+14. Audit installed package versions for quick vulnerability checks
+15. Install and configure rootkit detection with chkrootkit
+16. Install and configure a UFW firewall with secure defaults
+17. Remove development tools and compilers from production hosts
+18. Lock down sudoer
 
 How to Use:
 -----------
